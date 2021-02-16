@@ -32,13 +32,16 @@ export class ebayPuppet {
         const tabPromise = this.browser.newPage();
 
         // Generate page URL
-        let pageURL: string;
-        if(page == 1){
-            pageURL = `https://www.ebay.com/sch/m.html?_nkw=&_armrs=1&_from=&_ssn=${username}_skc=${size}&rt=nc`
-        } else {
-            pageURL = `https://www.ebay.com/sch/m.html?_nkw=&_armrs=1&_from=&_ssn=${username}&_pgn=${page}&_skc=${size * (page + 1)}&rt=nc`
-        }
-        pageURL = "https://www.ebay.com/sch/m.html?_nkw=&_armrs=1&_from=&_ssn=sunshinesstudios&_sop=10&_ipg=200&rt=nc"
+        const domain = "https://www.ebay.com/";
+        const endpoint = "sch/m.html?";
+        const ssn = `&_ssn=${username}`;
+        const skc = page == 1 ? "" : `&_skc=${size * (page - 1)}`;
+        const pgn = page == 1 ? "" : `&_pgn=${page}`;
+        const ipg = page == 1 ? `&_ipg=${size}` : ""
+        const pageURL = `${domain + endpoint}_nkw=&_armrs=1&_from=${ssn}&_sop=10${pgn + skc + ipg}&rt=nc`
+
+        console.log(pageURL);
+
 
         // Load Page
         // TODO: Replace this (and the browser bit) with a function for rate-limiting to stop us from getting banned.
@@ -133,7 +136,7 @@ export class ebayPuppet {
         // const imageUrl = uItem.getElementsByTagName("img")[0].getAttribute("src") || "";
         const imageUrl:string = rejectedOrEmpty(asyncDone[5]);
         uItem.dispose();
-        if (id == "") {
+        if (imageUrl == "") {
             // EVERY E-Bay item is supposed to have a image, if it doesn't, we have a problem (probably multiple)
             console.warn(`Invalid SRC scraped for item's image ${name}`);
             const listing: ebayListingShort = { name, id, url, price, shipping, freeShip };
@@ -147,6 +150,9 @@ export class ebayPuppet {
     }
 
     protected async findMaxPage(element: ElementHandle): Promise<number>{
+        if(!element){
+            throw new Error("Page elements are missing!")
+        }
         const middleMan = await element.$$eval(".pg", (nodes: any) => nodes.map((n: any) => n.innerText)) as unknown;
         const pages = middleMan as Array<string>;
         element.dispose();

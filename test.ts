@@ -7,39 +7,23 @@ import { database, ebayListingShort } from "./database.ts";
 const testUser = "sunshinesstudios";
 const ebp = new ebayPuppet();
 await ebp.start();
-const p1 = await ebp.cataloguePage(testUser, 1, 200);
-console.log(p1.items.length);
-console.log(p1.maxPageSeen);
-console.log(p1.skipped);
-//console.log((await ebp.cataloguePage(testUser, 2, 200)).items.length)
-//console.log((await ebp.cataloguePage(testUser, 3, 200)).items.length)
-//console.log((await ebp.cataloguePage(testUser, 4, 200)).items.length)
-let current = 1;
-let lastMax = p1.maxPageSeen;
-while(current < lastMax){
-    current = lastMax;
-    const a = await ebp.cataloguePage(testUser, 4, 200);
-    lastMax = a.maxPageSeen;
-    console.log(`Loaded page ${current}, found ${a.items.length} items`)
-    console.log(`Skipped ${a.skipped} items, next max page was ${a.maxPageSeen}`);
+const db = new database(testUser);
+await db.initialize();
+let page = 1;
+let maxPageSeen = 1;
+while(page <= maxPageSeen){
+    console.log(`Loading page ${page}/${maxPageSeen}`);
+    const pageContent = await ebp.cataloguePage(testUser, page, 200);
+    maxPageSeen = pageContent.maxPageSeen;
+    if(pageContent.skipped){
+        console.error(`SKIPPED ${pageContent.skipped} ITEMS! PANIC!!!`)
+    }
+    console.log(`${pageContent.items.length} items found, adding to DB.`)
+    for(const listing of pageContent.items){
+        await db.addSimple(listing);
+    }
+    page++;
 }
-ebp.closeBrowser();
-// const db = new database(testUser);
-// await db.initialize();
-// let page = 1;
-// let maxPageSeen = 1;
-// while(page <= maxPageSeen){
-//     console.log(`Loading page ${page}/${maxPageSeen}`);
-//     const pageContent = await getOnePage(testUser, page, 200);
-//     maxPageSeen = pageContent.maxPageSeen;
-//     if(pageContent.skipped >= 2){
-//         console.error(`SKIPPED ${pageContent.skipped} ITEMS! PANIC!!!`)
-//     }
-//     console.log(`${pageContent.items.length} items found, adding to DB.`)
-//     for(const listing of pageContent.items){
-//         await db.addSimple(listing);
-//     }
-//     page++;
-// }
 
-// db.forceSave();
+db.forceSave();
+ebp.closeBrowser();
