@@ -1,16 +1,18 @@
 /// <reference lib="ESNext" />
 
-import { getOnePage, closeBrowser } from "./ebay.ts";
+import { ebayPuppet } from "./ebay-puppeteer.ts";
 import { database, ebayListingShort } from "./database.ts";
 
 
 const testUser = "sunshinesstudios";
-const p1 = await getOnePage(testUser, 1, 200);
+const ebp = new ebayPuppet();
+await ebp.start();
+const p1 = await ebp.cataloguePage(testUser, 1, 200);
 console.log(p1.items.length);
-console.log((await getOnePage(testUser, 2, 200)).items.length)
-console.log((await getOnePage(testUser, 3, 200)).items.length)
-console.log((await getOnePage(testUser, 4, 200)).items.length)
-closeBrowser();
+console.log((await ebp.cataloguePage(testUser, 2, 200)).items.length)
+console.log((await ebp.cataloguePage(testUser, 3, 200)).items.length)
+console.log((await ebp.cataloguePage(testUser, 4, 200)).items.length)
+//ebp.closeBrowser();
 // const db = new database(testUser);
 // await db.initialize();
 // let page = 1;
