@@ -1,20 +1,33 @@
 // deno-lint-ignore-file no-explicit-any
 
-import {default as puppeteer, Browser, ElementHandle} from "https://raw.githubusercontent.com/lucacasonato/deno-puppeteer/main/mod.ts";
+import {default as puppeteer, Browser, ElementHandle, Page} from "https://raw.githubusercontent.com/lucacasonato/deno-puppeteer/main/mod.ts";
 import { ebayListingShort, ebayListingExtended } from "./database.ts";
 
 export class ebayPuppet {
     private browser: Browser | null = null;
+    private inProgress: Array<Promise<void>> = [];
+    private mayStart = false;
     
     public async start() {
+        if(this.browser){
+            throw new Error("Browser is already started!");
+        }
         this.browser = await puppeteer.launch();
+        this.mayStart = true;
+        this.inProgress = [];
     }
 
     public async cataloguePage(username: string, page: number, size: number) {
+        const lockFunc = this.lfGen();
 
         // Ensure browser tab
         if(!this.browser){
+            lockFunc();
             throw new Error("Puppeteer Browser isn't running!");
+        }
+        if(!this.mayStart){
+            lockFunc();
+            throw new Error("Puppeteer is shutting down!");
         }
         const tabPromise = this.browser.newPage();
 
@@ -29,7 +42,11 @@ export class ebayPuppet {
 
         // Load Page
         // TODO: Replace this (and the browser bit) with a function for rate-limiting to stop us from getting banned.
-        const tab = await tabPromise;
+        const tab = await tabPromise as Page;
+        await tab.setViewport({
+            width: 2600,
+            height: 480,
+        });
         await tab.goto(pageURL, {
             waitUntil: "networkidle0",
         });
@@ -80,7 +97,8 @@ export class ebayPuppet {
         const maxPageSeen = await this.findMaxPage(pagesElem);
 
         // Close the tab.
-        tab.close();
+        await tab.close();
+        lockFunc();
         return { items, skipped, maxPageSeen};
     }
 
@@ -145,14 +163,27 @@ export class ebayPuppet {
     }
 
     public async closeBrowser() {
+        this.mayStart = false;
         if(!this.browser){
             throw new Error("Browser is already closed!")
         }
-        // TODO: add logic to ensure all current scrapes are finished and prevent new scrapes from starting.
+        // Ensure all current scrapes are finished and prevent new scrapes from starting.
+        await Promise.all(this.inProgress);
         await this.browser.close();
         this.browser = null;
     }
 
+    protected lfGen(): ()=>void {
+        // This is stupid, I feel stupid, but it should stop the race failures.
+        let rezHolder = () => {};
+        const rez = () => rezHolder();
+        const promFunc = function (res: ()=>void) {
+            rezHolder = res;
+        }
+        const p = new Promise(promFunc) as Promise<void>;
+        this.inProgress.push(p);
+        return rez;
+    }
 }
 
 

@@ -9,10 +9,21 @@ const ebp = new ebayPuppet();
 await ebp.start();
 const p1 = await ebp.cataloguePage(testUser, 1, 200);
 console.log(p1.items.length);
-console.log((await ebp.cataloguePage(testUser, 2, 200)).items.length)
-console.log((await ebp.cataloguePage(testUser, 3, 200)).items.length)
-console.log((await ebp.cataloguePage(testUser, 4, 200)).items.length)
-//ebp.closeBrowser();
+console.log(p1.maxPageSeen);
+console.log(p1.skipped);
+//console.log((await ebp.cataloguePage(testUser, 2, 200)).items.length)
+//console.log((await ebp.cataloguePage(testUser, 3, 200)).items.length)
+//console.log((await ebp.cataloguePage(testUser, 4, 200)).items.length)
+let current = 1;
+let lastMax = p1.maxPageSeen;
+while(current < lastMax){
+    current = lastMax;
+    const a = await ebp.cataloguePage(testUser, 4, 200);
+    lastMax = a.maxPageSeen;
+    console.log(`Loaded page ${current}, found ${a.items.length} items`)
+    console.log(`Skipped ${a.skipped} items, next max page was ${a.maxPageSeen}`);
+}
+ebp.closeBrowser();
 // const db = new database(testUser);
 // await db.initialize();
 // let page = 1;
